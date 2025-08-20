@@ -1,0 +1,181 @@
+{
+  "name": "Portreva \u2014 remove.bg unified (sync)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai/removebg",
+        "responseMode": "responseNode"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.remove.bg/v1.0/removebg",
+        "method": "POST",
+        "jsonParameters": false,
+        "options": {
+          "bodyContentType": "form-data"
+        },
+        "sendBinaryData": false,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{$env.REMOVEBG_API_KEY}}"
+            }
+          ]
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "image_url",
+              "value": "={{$json.image_url}}"
+            },
+            {
+              "name": "size",
+              "value": "auto"
+            },
+            {
+              "name": "bg",
+              "value": "transparent"
+            },
+            {
+              "name": "format",
+              "value": "={{ $json.mode === 'png' || ($json.mode === 'auto' && ($json.mp ?? 0) <= 10) ? 'png' : ($json.mode === 'zip' ? 'zip' : 'webp') }}"
+            }
+          ]
+        },
+        "responseFormat": "file",
+        "dataPropertyName": "removebg"
+      },
+      "name": "remove.bg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.mode}}",
+              "operation": "equal",
+              "value2": "zip"
+            }
+          ]
+        }
+      },
+      "name": "IF ZIP?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ \"https://api.cloudinary.com/v1_1/\" + $env.CLOUDINARY_CLOUD_NAME + \"/raw/upload\" }}",
+        "method": "POST",
+        "sendBinaryData": true,
+        "binaryPropertyName": "removebg",
+        "options": {
+          "bodyContentType": "form-data"
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "upload_preset",
+              "value": "={{$env.CLOUDINARY_UPLOAD_PRESET_RAW}}"
+            }
+          ]
+        }
+      },
+      "name": "Cloudinary Upload (raw ZIP)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1160,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ \"https://api.cloudinary.com/v1_1/\" + $env.CLOUDINARY_CLOUD_NAME + \"/image/upload\" }}",
+        "method": "POST",
+        "sendBinaryData": true,
+        "binaryPropertyName": "removebg",
+        "options": {
+          "bodyContentType": "form-data"
+        },
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "upload_preset",
+              "value": "={{$env.CLOUDINARY_UPLOAD_PRESET}}"
+            }
+          ]
+        }
+      },
+      "name": "Cloudinary Upload (image)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1160,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "remove.bg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "remove.bg": {
+      "main": [
+        [
+          {
+            "node": "IF ZIP?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF ZIP?": {
+      "main": [
+        [
+          {
+            "node": "Cloudinary Upload (raw ZIP)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cloudinary Upload (image)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

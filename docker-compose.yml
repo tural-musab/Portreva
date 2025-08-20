@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server","--appendonly","yes"]
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:1.94.1
+    depends_on: [postgres, redis]
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      # Public URLs / reverse proxy
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      N8N_HOST: ${N8N_HOST}
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      # Security & limits
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: ${N8N_BLOCK_ENV_ACCESS_IN_NODE}
+      N8N_PAYLOAD_SIZE_MAX: ${N8N_PAYLOAD_SIZE_MAX:-64}
+      N8N_FORMDATA_FILE_SIZE_MAX: ${N8N_FORMDATA_FILE_SIZE_MAX:-512}
+      # Metrics (protect behind proxy auth)
+      N8N_METRICS: ${N8N_METRICS:-false}
+      N8N_METRICS_INCLUDE_QUEUE_METRICS: ${N8N_METRICS_INCLUDE_QUEUE_METRICS:-false}
+      # Healthz (enable server-side health info)
+      QUEUE_HEALTH_CHECK_ACTIVE: "true"
+    ports: ["5678:5678"]
+    healthcheck:
+      test: ["CMD","wget","-q","-S","-O","-","http://localhost:5678/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  worker:
+    image: n8nio/n8n:1.94.1
+    depends_on: [postgres, redis]
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: ${N8N_BLOCK_ENV_ACCESS_IN_NODE}
+      N8N_PAYLOAD_SIZE_MAX: ${N8N_PAYLOAD_SIZE_MAX:-64}
+      N8N_FORMDATA_FILE_SIZE_MAX: ${N8N_FORMDATA_FILE_SIZE_MAX:-512}
+    command: ["n8n","worker","--concurrency=${N8N_WORKER_CONCURRENCY:-5}"]
+
+volumes:
+  pgdata:
+  n8n_data:
