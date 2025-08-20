@@ -1,0 +1,9 @@
+{
+  "name": "@portreva/mobile",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "echo 'setup expo later'",
+    "build": "echo 'build mobile later'"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "outDir": "dist" },
+  "include": ["app", "next-env.d.ts"],
+  "exclude": ["node_modules"]
+}
