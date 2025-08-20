@@ -1,12 +1,9 @@
-# Portreva Infra
+# Portreva
 
-n8n (queue mode) main + worker, PostgreSQL & Redis entegrasyonları, workflow JSON'ları ve bulut deploy notları.
+Uygulama deposu.
 
-## İçerik
-- docker-compose.yml
-- workflows/*.json
-- examples/middleware/* (fal/replicate webhook doğrulama)
-- .env.example
+Altyapı (n8n queue mode, PostgreSQL, Redis, workflow JSON'ları ve ilgili docker-compose) ayrı repoya taşındı:
 
-## Notlar
-Gerçek gizli anahtarları repo'ya koyma; Northflank/CI ortam değişkenlerinde tut.
+- Infra: https://github.com/tural-musab/portreva-infra
+
+Not: Gizli anahtarları repo'ya koyma; CI/hosting ortam değişkenlerinde tut.
