@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  emailVerified   DateTime?
+  image           String?
+  credits         Int       @default(3) // Free trial credits
+  subscription    Subscription?
+  images          Image[]
+  apiKeys         ApiKey[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Subscription {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  stripeCustomerId String   @unique
+  stripePriceId   String
+  stripeSubscriptionId String @unique
+  status          String
+  currentPeriodEnd DateTime
+  cancelAtPeriodEnd Boolean @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Image {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  originalUrl     String
+  processedUrl    String?
+  thumbnailUrl    String?
+  cloudinaryId    String?
+  fileName        String
+  fileSize        Int
+  width           Int?
+  height          Int?
+  format          String
+  status          ProcessStatus @default(PENDING)
+  error           String?
+  metadata        Json?
+  processTime     Int?      // milliseconds
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model ApiKey {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  key             String    @unique
+  name            String
+  lastUsed        DateTime?
+  requestCount    Int       @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum ProcessStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}

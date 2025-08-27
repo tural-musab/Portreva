@@ -1,0 +1,225 @@
+{
+  "name": "Portreva \u2014 fal.ai Kontext (async)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai/fal/kontext",
+        "responseMode": "responseNode"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "responseCode": 202,
+        "responseData": "={{ { ok: true, received_at: new Date().toISOString(), execId: $execution.id } }}"
+      },
+      "name": "Respond 202",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{\"https://queue.fal.run/fal-ai/flux-pro/kontext?fal_webhook=\" + encodeURIComponent($execution.resumeUrl)}}",
+        "method": "POST",
+        "jsonParameters": true,
+        "headers": {
+          "parameters": {
+            "options": {
+              "headers": [
+                {
+                  "name": "Authorization",
+                  "value": "={{\"Key \" + $env.FAL_API_KEY}}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          }
+        },
+        "bodyParametersJson": "={{ JSON.stringify({ input: $json.input || {} }) }}"
+      },
+      "name": "fal.ai Kontext (queue)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "webhook"
+      },
+      "name": "Wait (On Webhook Call)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "equal",
+              "value2": "OK"
+            }
+          ]
+        }
+      },
+      "name": "IF status==OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "file_url",
+              "value": "={{ $json.payload?.images?.[0]?.url || $throw('no image in payload') }}"
+            }
+          ]
+        }
+      },
+      "name": "Pick URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ \"https://api.cloudinary.com/v1_1/\" + $env.CLOUDINARY_CLOUD_NAME + \"/image/upload\" }}",
+        "method": "POST",
+        "options": {
+          "bodyContentType": "form-urlencoded"
+        },
+        "sendBinaryData": false,
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "upload_preset",
+              "value": "={{$env.CLOUDINARY_UPLOAD_PRESET}}"
+            },
+            {
+              "name": "file",
+              "value": "={{$json.file_url}}"
+            }
+          ]
+        }
+      },
+      "name": "Cloudinary Upload (image)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1640,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "responseCode": 502,
+        "responseData": "={{ { ok:false, message: $json.error || 'upstream_failed', provider_status: $json.status } }}"
+      },
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond 202",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "fal.ai Kontext (queue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fal.ai Kontext (queue)": {
+      "main": [
+        [
+          {
+            "node": "Wait (On Webhook Call)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (On Webhook Call)": {
+      "main": [
+        [
+          {
+            "node": "IF status==OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF status==OK": {
+      "main": [
+        [
+          {
+            "node": "Pick URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick URL": {
+      "main": [
+        [
+          {
+            "node": "Cloudinary Upload (image)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

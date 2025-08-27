@@ -1,0 +1,186 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "functionCode": "// RB Error Extractor (Function Item)\nconst res = $json; // fullResponse\nlet code = '', message = '';\ntry {\n  const body = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;\n  if (body?.errors?.[0]) {\n    code = body.errors[0].code || '';\n    message = body.errors[0].title || body.errors[0].message || '';\n  }\n} catch (e) { /* ignore */ }\nreturn {\n  rb_status: res.statusCode,\n  rb_error_code: code,\n  rb_error_message: message,\n  rb_request_id: res.headers?.['x-request-id'] || res.headers?.['x-rbg-request-id'] || '',\n  rb_limit_remaining: res.headers?.['x-ratelimit-remaining'] || '',\n  rb_limit_reset: res.headers?.['x-ratelimit-reset'] || ''\n};"
+        },
+        "id": "36f21623-6eba-4b52-933c-b398f6c419f8",
+        "name": "RB Error Extractor",
+        "type": "n8n-nodes-base.functionItem",
+        "typeVersion": 1,
+        "position": [-240, 208]
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.rb_status + '' }}",
+                      "rightValue": "402",
+                      "operator": { "type": "string", "operation": "equals" },
+                      "id": "rule-402"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": { "caseSensitive": true, "typeValidation": "strict", "version": 2 },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.rb_status + '' }}",
+                      "rightValue": "429",
+                      "operator": { "type": "string", "operation": "equals" },
+                      "id": "rule-429"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "cabbb45c-c10c-4ac1-85a8-3deb7d3d43fb",
+        "name": "Switch (Map Status)",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [-48, 208]
+      },
+      {
+        "parameters": {
+          "keepOnlySet": true,
+          "values": {
+            "string": [
+              { "name": "rb_status", "value": "={{ $json.rb_status }}" },
+              { "name": "rb_error_code", "value": "={{ $json.rb_error_code }}" },
+              { "name": "rb_error_message", "value": "={{ $json.rb_error_message }}" },
+              { "name": "rb_request_id", "value": "={{ $json.rb_request_id }}" },
+              { "name": "rb_limit_remaining", "value": "={{ $json.rb_limit_remaining }}" },
+              { "name": "rb_limit_reset", "value": "={{ $json.rb_limit_reset }}" },
+              { "name": "source_url", "value": "={{ $node[\"Webhook\"].json.body?.image_url || $node[\"Webhook\"].json.query?.image_url || '' }}" },
+              { "name": "error", "value": "remove_bg_failed" },
+              { "name": "message", "value": "={{ $json.rb_error_message || 'Insufficient credits' }}" },
+              { "name": "status_code", "value": "={{ $json.rb_status }}" },
+              { "name": "retries", "value": "3" }
+            ]
+          },
+          "options": {}
+        },
+        "id": "f9e62e72-fd9e-4240-9fb9-b244cd08c401",
+        "name": "Build Error JSON (402)",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 2,
+        "position": [144, 352]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": { "responseCode": 402 }
+        },
+        "id": "fd60e478-4ca0-4d7d-9ba7-272c1d1bc282",
+        "name": "Respond 402 (JSON)",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [336, 352]
+      },
+      {
+        "parameters": {
+          "keepOnlySet": true,
+          "values": {
+            "string": [
+              { "name": "rb_status", "value": "={{ $json.rb_status }}" },
+              { "name": "rb_error_code", "value": "={{ $json.rb_error_code }}" },
+              { "name": "rb_error_message", "value": "={{ $json.rb_error_message }}" },
+              { "name": "rb_request_id", "value": "={{ $json.rb_request_id }}" },
+              { "name": "rb_limit_remaining", "value": "={{ $json.rb_limit_remaining }}" },
+              { "name": "rb_limit_reset", "value": "={{ $json.rb_limit_reset }}" },
+              { "name": "source_url", "value": "={{ $node[\"Webhook\"].json.body?.image_url || $node[\"Webhook\"].json.query?.image_url || '' }}" },
+              { "name": "error", "value": "remove_bg_failed" },
+              { "name": "message", "value": "={{ $json.rb_error_message || 'Rate limited' }}" },
+              { "name": "status_code", "value": "={{ $json.rb_status }}" },
+              { "name": "retries", "value": "3" }
+            ]
+          },
+          "options": {}
+        },
+        "id": "01caa16e-d99f-4e3a-99ca-3692d5f967e6",
+        "name": "Build Error JSON (429)",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 2,
+        "position": [144, 208]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": { "responseCode": 429 }
+        },
+        "id": "0c27551c-cec1-4d98-8de5-d52eb5c95637",
+        "name": "Respond 429 (JSON)",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [336, 208]
+      },
+      {
+        "parameters": {
+          "keepOnlySet": true,
+          "values": {
+            "string": [
+              { "name": "rb_status", "value": "={{ $json.rb_status }}" },
+              { "name": "rb_error_code", "value": "={{ $json.rb_error_code }}" },
+              { "name": "rb_error_message", "value": "={{ $json.rb_error_message }}" },
+              { "name": "rb_request_id", "value": "={{ $json.rb_request_id }}" },
+              { "name": "rb_limit_remaining", "value": "={{ $json.rb_limit_remaining }}" },
+              { "name": "rb_limit_reset", "value": "={{ $json.rb_limit_reset }}" },
+              { "name": "source_url", "value": "={{ $node[\"Webhook\"].json.body?.image_url || $node[\"Webhook\"].json.query?.image_url || '' }}" },
+              { "name": "error", "value": "remove_bg_failed" },
+              { "name": "message", "value": "={{ $json.rb_error_message || 'Remove.bg did not return a PNG after 3 tries' }}" },
+              { "name": "status_code", "value": "={{ $json.rb_status }}" },
+              { "name": "retries", "value": "3" }
+            ]
+          },
+          "options": {}
+        },
+        "id": "2314d0b0-b782-4450-a010-fd13e17397be",
+        "name": "Build Error JSON (default)",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 2,
+        "position": [144, 64]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": { "responseCode": 502 }
+        },
+        "id": "a86aa785-ec89-4b9b-948d-3be3969d4f22",
+        "name": "Respond 502 (JSON)",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.4,
+        "position": [336, 64]
+      }
+    ],
+    "connections": {
+      "RB Error Extractor": {
+        "main": [[{ "node": "Switch (Map Status)", "type": "main", "index": 0 }]]
+      },
+      "Switch (Map Status)": {
+        "main": [
+          [{ "node": "Build Error JSON (402)", "type": "main", "index": 0 }],
+          [{ "node": "Build Error JSON (429)", "type": "main", "index": 0 }],
+          [{ "node": "Build Error JSON (default)", "type": "main", "index": 0 }]
+        ]
+      },
+      "Build Error JSON (402)": { "main": [[{ "node": "Respond 402 (JSON)", "type": "main", "index": 0 }]] },
+      "Build Error JSON (429)": { "main": [[{ "node": "Respond 429 (JSON)", "type": "main", "index": 0 }]] },
+      "Build Error JSON (default)": { "main": [[{ "node": "Respond 502 (JSON)", "type": "main", "index": 0 }]] }
+    }
+  }
+  

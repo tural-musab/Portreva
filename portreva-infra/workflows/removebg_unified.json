@@ -1,0 +1,1097 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai/removebg",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "22f05d21-e52a-40f6-876f-8dbfa75fd431",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -5712,
+        416
+      ],
+      "webhookId": "c350454c-d168-45c8-b477-560f467c2c64"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "started_at",
+              "value": "={{ $now }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7144ab10-212b-4836-aa23-83df10ccce24",
+      "name": "Stamp Start",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -5504,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4c05a429-23bc-4af0-83ff-eab4b8387461",
+              "leftValue": "={{$node[\"Webhook\"].json.body?.image_url || $node[\"Webhook\"].json.query?.image_url}}",
+              "rightValue": "^(https?:)?//",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "ffc7ee5a-c2a5-49f7-8993-284a9f147439",
+              "leftValue": "={{ $json.query?.image_url ?? '' }}",
+              "rightValue": "^(https?:)?//",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5312,
+        416
+      ],
+      "id": "03259994-410a-435f-8eda-1cc2e16a7c89",
+      "name": "Has image_url?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"error\":\"image_url_required\"}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "3657e3c6-eaba-415c-818d-aea75dc5f57f",
+      "name": "Respond 400 (JSON)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -4992,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.remove.bg/v1.0/removebg",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.REMOVEBG_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $node[\"Webhook\"].json.body.image_url }}"
+            },
+            {
+              "name": "size",
+              "value": "auto"
+            },
+            {
+              "name": "format",
+              "value": "png"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "5f5e4d88-45ef-446a-b0f3-0c723cc1fd30",
+      "name": "remove.bg (try #1)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -4992,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "operator": {
+                "name": "filter.operator.equals",
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $binary.data?.mimeType || '' }}",
+              "rightValue": "image/png"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f7235152-9a9d-413c-8c4e-b458a13f1f49",
+      "name": "IF PNG? (try #1)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -4768,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "482a3af8-d992-44a5-a7b3-85205d36e798",
+      "name": "Wait 2s (before retry #2)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -4576,
+        544
+      ],
+      "webhookId": "0f7ccdc0-0752-4e18-99d3-f17199039308"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.remove.bg/v1.0/removebg",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.REMOVEBG_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $node[\"Webhook\"].json.body.image_url }}"
+            },
+            {
+              "name": "size",
+              "value": "auto"
+            },
+            {
+              "name": "format",
+              "value": "png"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "88534660-7573-4cf5-ad6a-b61db7260f50",
+      "name": "remove.bg (try #2)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -4352,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond2",
+              "operator": {
+                "name": "filter.operator.equals",
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $binary.data?.mimeType || '' }}",
+              "rightValue": "image/png"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "778447a6-3045-4ecd-a633-c43ac16851fc",
+      "name": "IF PNG? (try #2)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -4144,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 4
+      },
+      "id": "96b06af7-5f2a-40aa-98af-1eade2f71145",
+      "name": "Wait 4s (before retry #3)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -3712,
+        560
+      ],
+      "webhookId": "ea9e19d6-02ad-4bf1-9e13-7cb3dd04d17d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.remove.bg/v1.0/removebg",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $env.REMOVEBG_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $node[\"Webhook\"].json.body.image_url }}"
+            },
+            {
+              "name": "size",
+              "value": "auto"
+            },
+            {
+              "name": "format",
+              "value": "png"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "0556bfd9-5605-4833-b5f1-855cdaf6e6c8",
+      "name": "remove.bg (try #3)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -3488,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond3",
+              "operator": {
+                "name": "filter.operator.equals",
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{ $binary.data?.mimeType || '' }}",
+              "rightValue": "image/png"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c1fa14e6-4c16-4537-ab64-83c1046bb639",
+      "name": "IF PNG? (try #3)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -3200,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://api.cloudinary.com/v1_1/\" + $env.CLOUDINARY_CLOUD_NAME + \"/image/upload\" }}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "upload_preset",
+              "value": "={{ $env.CLOUDINARY_UPLOAD_PRESET }}"
+            },
+            {
+              "name": "public_id",
+              "value": "={{ ( ($node[\"Webhook\"].json.body?.name || 'bg_removed') + '-' + Date.now() ) }}"
+            },
+            {
+              "name": "folder",
+              "value": "={{ $env.CLD_FOLDER || 'portreva/removed' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8b5b904c-1af7-4b9b-9841-dfe23aeedead",
+      "name": "Cloudinary Upload (image)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -2960,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const url = $json.secure_url;\n\nfunction transformUrl(baseUrl, params) {\n  return baseUrl.replace('/upload/', `/upload/${params}/`);\n}\n\nlet latency_ms = null;\ntry {\n  const startedAt = $node[\"Stamp Start\"].json.started_at;\n  if (startedAt) latency_ms = Date.now() - new Date(startedAt).getTime();\n} catch {}\n\nreturn {\n  url_original: url,\n  url_png:  transformUrl(url, 'f_png,q_auto'),\n  url_jpg:  transformUrl(url, 'f_jpg,q_auto'),\n  url_webp: transformUrl(url, 'f_webp,q_auto'),\n  url_auto: transformUrl(url, 'f_auto,q_auto'),\n  url_thumb: transformUrl(url, 'c_fill,g_auto,w_300,h_300,q_auto,dpr_auto'),\n  etag: $json.etag,\n  created_at: $json.created_at,\n  secure_url: $json.secure_url,\n  resource_type: $json.resource_type,\n  public_id: $json.public_id,\n  width: $json.width,\n  height: $json.height,\n  bytes: $json.bytes,\n  latency_ms,\n  rb_limit_remaining: $node[\"remove.bg (try #1)\"].json.headers?.['x-ratelimit-remaining'] || '',\n  rb_limit_reset: $node[\"remove.bg (try #1)\"].json.headers?.['x-ratelimit-reset'] || '',\n  source_url: $node[\"Webhook\"].json.body?.image_url || $node[\"Webhook\"].json.query?.image_url || ''\n};"
+      },
+      "id": "328717cf-c968-493e-822c-5db8e1d46aeb",
+      "name": "Transform URL Builder",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [
+        -2768,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "url",
+              "value": "={{ $json.url_original }}"
+            },
+            {
+              "name": "resource_type",
+              "value": "={{ $json.resource_type }}"
+            },
+            {
+              "name": "public_id",
+              "value": "={{ $json.public_id }}"
+            },
+            {
+              "name": "url_webp",
+              "value": "={{ $json.url_webp }}"
+            },
+            {
+              "name": "url_jpg",
+              "value": "={{ $json.url_jpg }}"
+            },
+            {
+              "name": "url_auto",
+              "value": "={{ $json.url_auto }}"
+            },
+            {
+              "name": "url_png",
+              "value": "={{ $json.url_png }}"
+            },
+            {
+              "name": "url_thumb",
+              "value": "={{ $json.url_thumb }}"
+            },
+            {
+              "name": "etag",
+              "value": "={{ $json.etag }}"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ $json.created_at }}"
+            },
+            {
+              "name": "latency_ms",
+              "value": "={{ $json.latency_ms }}"
+            },
+            {
+              "name": "source_url",
+              "value": "={{ $json.source_url }}"
+            },
+            {
+              "name": "rb_limit_remaining",
+              "value": "={{ $json.rb_limit_remaining }}"
+            },
+            {
+              "name": "rb_limit_reset",
+              "value": "={{ $json.rb_limit_reset }}"
+            }
+          ],
+          "number": [
+            {
+              "name": "width",
+              "value": "={{ $json.width }}"
+            },
+            {
+              "name": "height",
+              "value": "={{ $json.height }}"
+            },
+            {
+              "name": "bytes",
+              "value": "={{ $json.bytes }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "54429a9a-2ab2-4588-b835-fa3745743032",
+      "name": "Build Success JSON",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -2576,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "e7a98d81-f222-4584-a265-9536d6075eb4",
+      "name": "Respond 200 (JSON)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -2384,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// RB Error Extractor (Function Item)\nconst res = $json; // fullResponse\nlet code = '', message = '';\ntry {\n  const body = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;\n  if (body?.errors?.[0]) {\n    code = body.errors[0].code || '';\n    message = body.errors[0].title || body.errors[0].message || '';\n  }\n} catch (e) { /* ignore */ }\nreturn {\n  rb_status: res.statusCode,\n  rb_error_code: code,\n  rb_error_message: message,\n  rb_request_id: res.headers?.['x-request-id'] || res.headers?.['x-rbg-request-id'] || '',\n  rb_limit_remaining: res.headers?.['x-ratelimit-remaining'] || '',\n  rb_limit_reset: res.headers?.['x-ratelimit-reset'] || ''\n};"
+      },
+      "id": "2c8df3bc-2461-41d1-bf3f-19723d6d718d",
+      "name": "RB Error Extractor",
+      "type": "n8n-nodes-base.functionItem",
+      "typeVersion": 1,
+      "position": [
+        -2960,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rb_status + '' }}",
+                    "rightValue": "402",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "rule-402"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.rb_status + '' }}",
+                    "rightValue": "429",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "rule-429"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "20b63096-bfb2-4d76-894d-0bbce8cb0347",
+      "name": "Switch (Map Status)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2768,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "rb_status",
+              "value": "={{ $json.rb_status }}"
+            },
+            {
+              "name": "rb_error_code",
+              "value": "={{ $json.rb_error_code }}"
+            },
+            {
+              "name": "rb_error_message",
+              "value": "={{ $json.rb_error_message }}"
+            },
+            {
+              "name": "rb_request_id",
+              "value": "={{ $json.rb_request_id }}"
+            },
+            {
+              "name": "rb_limit_remaining",
+              "value": "={{ $json.rb_limit_remaining }}"
+            },
+            {
+              "name": "rb_limit_reset",
+              "value": "={{ $json.rb_limit_reset }}"
+            },
+            {
+              "name": "source_url",
+              "value": "={{ $node[\"Webhook\"].json.body?.image_url || $node[\"Webhook\"].json.query?.image_url || '' }}"
+            },
+            {
+              "name": "error",
+              "value": "remove_bg_failed"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.rb_error_message || 'Insufficient credits' }}"
+            },
+            {
+              "name": "status_code",
+              "value": "={{ $json.rb_status }}"
+            },
+            {
+              "name": "retries",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb5f27a2-4079-4688-9d1d-97b298cb8fd8",
+      "name": "Build Error JSON (402)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -2576,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 402
+        }
+      },
+      "id": "a6602e97-fd04-4e9f-9684-e6621ff737bd",
+      "name": "Respond 402 (JSON)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -2384,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "rb_status",
+              "value": "={{ $json.rb_status }}"
+            },
+            {
+              "name": "rb_error_code",
+              "value": "={{ $json.rb_error_code }}"
+            },
+            {
+              "name": "rb_error_message",
+              "value": "={{ $json.rb_error_message }}"
+            },
+            {
+              "name": "rb_request_id",
+              "value": "={{ $json.rb_request_id }}"
+            },
+            {
+              "name": "rb_limit_remaining",
+              "value": "={{ $json.rb_limit_remaining }}"
+            },
+            {
+              "name": "rb_limit_reset",
+              "value": "={{ $json.rb_limit_reset }}"
+            },
+            {
+              "name": "source_url",
+              "value": "={{ $node[\"Webhook\"].json.body?.image_url || $node[\"Webhook\"].json.query?.image_url || '' }}"
+            },
+            {
+              "name": "error",
+              "value": "remove_bg_failed"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.rb_error_message || 'Rate limited' }}"
+            },
+            {
+              "name": "status_code",
+              "value": "={{ $json.rb_status }}"
+            },
+            {
+              "name": "retries",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1fe981b6-de8f-46bb-938a-23354ed38455",
+      "name": "Build Error JSON (429)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -2576,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 429
+        }
+      },
+      "id": "b8b6fe0b-897e-4d2b-af4b-50de6119f33c",
+      "name": "Respond 429 (JSON)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -2384,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "rb_status",
+              "value": "={{ $json.rb_status }}"
+            },
+            {
+              "name": "rb_error_code",
+              "value": "={{ $json.rb_error_code }}"
+            },
+            {
+              "name": "rb_error_message",
+              "value": "={{ $json.rb_error_message }}"
+            },
+            {
+              "name": "rb_request_id",
+              "value": "={{ $json.rb_request_id }}"
+            },
+            {
+              "name": "rb_limit_remaining",
+              "value": "={{ $json.rb_limit_remaining }}"
+            },
+            {
+              "name": "rb_limit_reset",
+              "value": "={{ $json.rb_limit_reset }}"
+            },
+            {
+              "name": "source_url",
+              "value": "={{ $node[\"Webhook\"].json.body?.image_url || $node[\"Webhook\"].json.query?.image_url || '' }}"
+            },
+            {
+              "name": "error",
+              "value": "remove_bg_failed"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.rb_error_message || 'Remove.bg did not return a PNG after 3 tries' }}"
+            },
+            {
+              "name": "status_code",
+              "value": "={{ $json.rb_status }}"
+            },
+            {
+              "name": "retries",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f571a9c0-c496-4cdf-ab67-dc2ff346577e",
+      "name": "Build Error JSON (default)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -2576,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "50a5526c-3cc5-413f-8145-f8d990d8f7fe",
+      "name": "Respond 502 (JSON)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -2384,
+        752
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Stamp Start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stamp Start": {
+      "main": [
+        [
+          {
+            "node": "Has image_url?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has image_url?": {
+      "main": [
+        [
+          {
+            "node": "remove.bg (try #1)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 400 (JSON)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "remove.bg (try #1)": {
+      "main": [
+        [
+          {
+            "node": "IF PNG? (try #1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF PNG? (try #1)": {
+      "main": [
+        [
+          {
+            "node": "Cloudinary Upload (image)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 2s (before retry #2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2s (before retry #2)": {
+      "main": [
+        [
+          {
+            "node": "remove.bg (try #2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "remove.bg (try #2)": {
+      "main": [
+        [
+          {
+            "node": "IF PNG? (try #2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF PNG? (try #2)": {
+      "main": [
+        [
+          {
+            "node": "Cloudinary Upload (image)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 4s (before retry #3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 4s (before retry #3)": {
+      "main": [
+        [
+          {
+            "node": "remove.bg (try #3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "remove.bg (try #3)": {
+      "main": [
+        [
+          {
+            "node": "IF PNG? (try #3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF PNG? (try #3)": {
+      "main": [
+        [
+          {
+            "node": "Cloudinary Upload (image)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RB Error Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cloudinary Upload (image)": {
+      "main": [
+        [
+          {
+            "node": "Transform URL Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform URL Builder": {
+      "main": [
+        [
+          {
+            "node": "Build Success JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Success JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond 200 (JSON)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RB Error Extractor": {
+      "main": [
+        [
+          {
+            "node": "Switch (Map Status)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch (Map Status)": {
+      "main": [
+        [
+          {
+            "node": "Build Error JSON (402)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error JSON (429)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error JSON (402)": {
+      "main": [
+        [
+          {
+            "node": "Respond 402 (JSON)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error JSON (429)": {
+      "main": [
+        [
+          {
+            "node": "Respond 429 (JSON)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error JSON (default)": {
+      "main": [
+        [
+          {
+            "node": "Respond 502 (JSON)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "b84f4655ce003b697257966ecee1f3da3a24af335ca99ac2ed9c7aa6ef59d2e7"
+  }
+}
